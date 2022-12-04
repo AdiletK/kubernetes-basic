@@ -1,0 +1,49 @@
+version: '3.7'
+
+services:
+  user-service:
+    image: 'adiletk/user-service:1.0.1'
+    container_name: user-service
+    depends_on:
+      - user-service-db
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://user-service-db:5432/users
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+    ports:
+      - "8080:8080"
+  user-service-db:
+    image: 'postgres:13.1-alpine'
+    container_name: user-service-db
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - ./init_script/user_init.sql:/docker-entrypoint-initdb.d/user_init.sql
+  post-service:
+    image: 'adiletk/post-service:1.0.0'
+    container_name: post-service
+    depends_on:
+      - post-service-db
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://post-service-db:5431/posts
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - USER.SERVICE.HOST=http://user-service:8080
+    ports:
+      - "8081:8081"
+  post-service-db:
+    image: 'postgres:13.1-alpine'
+    container_name: post-service-db
+    expose:
+      - "5431"
+    ports:
+      - "5431:5431"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - ./init_script/post_init.sql:/docker-entrypoint-initdb.d/post_init.sql
+    command: -p 5431

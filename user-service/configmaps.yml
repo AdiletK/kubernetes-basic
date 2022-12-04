@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: user-db-config
+  namespace: custom-namespace
+data:
+  POSTGRES_DB: users
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: user-service-datasource-url-config
+  namespace: custom-namespace
+data:
+  SPRING_DATASOURCE_URL: jdbc:postgresql://postgresql:5432/users
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: post-db-config
+  namespace: custom-namespace
+data:
+  POSTGRES_DB: posts
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: post-service-datasource-url-config
+  namespace: default
+data:
+  SPRING_DATASOURCE_URL: jdbc:postgresql://postgresql:5432/posts
+  USER_SERVICE_HOST: http://user-service:8080
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secret
+  namespace: custom-namespace
+type: Opaque
+data:
+  SPRING_DATASOURCE_USERNAME: postgres
+  SPRING_DATASOURCE_PASSWORD: postgres
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-secret
+  namespace: custom-namespace
+type: Opaque
+data:
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres
