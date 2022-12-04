@@ -1,0 +1,121 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgresql1
+  namespace: custom-namespace
+  labels:
+    app: postgresql1
+    tier: database
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 5431
+      targetPort: 5432
+  selector:
+    app: postgresql1
+    tier: database
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgresql1
+  namespace: custom-namespace
+  labels:
+    app: postgresql1
+    tier: database
+spec:
+  selector:
+    matchLabels:
+      app: postgresql1
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: postgresql1
+        tier: database
+    spec:
+      containers:
+        - name: postgresql1
+          image: postgres:13.1-alpine
+          imagePullPolicy: "IfNotPresent"
+          readinessProbe:
+            tcpSocket:
+              port: 5432
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 5432
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          envFrom:
+            - configMapRef:
+                name: post-db-config
+            - secretRef:
+                name: db-secret
+          volumeMounts:
+            - name: sql-initdb
+              mountPath: /docker-entrypoint-initdb.d
+          ports:
+            - containerPort: 5432
+              name: postgresql
+      volumes:
+        - name: sql-initdb
+          configMap:
+            name: post-db-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: post-service
+  namespace: custom-namespace
+spec:
+  type: LoadBalancer
+  selector:
+    app: post-service-pod
+  ports:
+    - protocol: "TCP"
+      port: 8081
+      targetPort: 8081
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: post-service
+  namespace: custom-namespace
+spec:
+  selector:
+    matchLabels:
+      app: post-service
+  strategy:
+    type: RollingUpdate
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: post-service
+        owner: adiletk
+    spec:
+      containers:
+        - name: post-service
+          image: adiletk/post-service:1.0.3
+          readinessProbe:
+            tcpSocket:
+              port: 8081
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 20
+            periodSeconds: 5
+          envFrom:
+            - configMapRef:
+                name: post-service-datasource-url-config
+            - secretRef:
+                name: app-secret
+          ports:
+            - containerPort: 8081

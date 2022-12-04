@@ -1,0 +1,121 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgresql
+  namespace: custom-namespace
+  labels:
+    app: postgresql
+    tier: database
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: postgresql
+    tier: database
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgresql
+  namespace: custom-namespace
+  labels:
+    app: postgresql
+    tier: database
+spec:
+  selector:
+    matchLabels:
+      app: postgresql
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: postgresql
+        tier: database
+    spec:
+      containers:
+        - name: postgresql
+          image: postgres:13.1-alpine
+          imagePullPolicy: "IfNotPresent"
+          readinessProbe:
+            tcpSocket:
+              port: 5432
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 5432
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          envFrom:
+            - configMapRef:
+                name: user-db-config
+            - secretRef:
+                name: db-secret
+          volumeMounts:
+            - name: sql-initdb
+              mountPath: /docker-entrypoint-initdb.d
+          ports:
+            - containerPort: 5432
+              name: postgresql
+      volumes:
+        - name: sql-initdb
+          configMap:
+            name: user-db-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+  namespace: custom-namespace
+spec:
+  type: LoadBalancer
+  selector:
+    app: user-service-pod
+  ports:
+    - protocol: "TCP"
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+  namespace: custom-namespace
+spec:
+  selector:
+    matchLabels:
+      app: user-service
+  strategy:
+    type: RollingUpdate
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: user-service
+        owner: adiletk
+    spec:
+      containers:
+        - name: user-service
+          image: adiletk/user-service:1.0.3
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 5
+          envFrom:
+            - configMapRef:
+                name: user-service-datasource-url-config
+            - secretRef:
+                name: app-secret
+          ports:
+            - containerPort: 8080
