@@ -1,0 +1,4 @@
+# Default values
+customNamespace: app
+
+replicaCount: 1

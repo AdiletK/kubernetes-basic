@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-ingress
+  namespace: custom-namespace
+  annotations:
+    ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: k8s.homework.user-service
+    http:
+      paths:
+        - path: /epamapp/kadyrbekov_adilet/
+          pathType: Prefix
+          backend:
+            service:
+              name: user-service
+              port:
+                number: 8080
+  - host: k8s.homework.post-service
+    http:
+      paths:
+        - path: /epamapp/kadyrbekov_adilet/
+          pathType: Prefix
+          backend:
+            service:
+              name: post-service
+              port:
+                number: 8081
